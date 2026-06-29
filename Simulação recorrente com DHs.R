@@ -1,23 +1,9 @@
 # ============================================================
 # SCRIPT 04
 # Simulação recorrente com DHs, testcrosses e reciclagem de elites
-#
-# Entradas:
-# - sim_inputs_real.rds
-# - cruzamentos_programa_B_top50_por_cenario.rds
-# - testadores_grupo_A.rds
-#
-# Saídas:
-# - sim_cycle_summary_recorrente.rds/csv
-# - sim_elites_recorrente.rds/csv
-# - sim_TC_selected_recorrente.rds/csv
-# - sim_crosses_used_recorrente.rds/csv
 # ============================================================
 
-
-
 library(dplyr)
-
 set.seed(123)
 
 # ------------------------------------------------------------
