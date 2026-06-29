@@ -1,0 +1,86 @@
+# ============================================================
+# 01_classify_genetic_groups.R
+# Classify maize inbred lines into two genetic groups
+# ============================================================
+library(dplyr)
+library(ggplot2)
+set.seed(123)
+# ------------------------------------------------------------
+# 1. Create output folders
+# ------------------------------------------------------------
+
+dir.create("outputs", showWarnings = FALSE)
+dir.create("figures", showWarnings = FALSE)
+
+# ------------------------------------------------------------
+# 2. Remove markers with zero variance
+# ------------------------------------------------------------
+var_snp <- apply(geno, 2, var, na.rm = TRUE)
+snps_validos <- names(var_snp)[
+  !is.na(var_snp) & var_snp > 0
+]
+geno_pca <- geno[, snps_validos, drop = FALSE]
+
+# ------------------------------------------------------------
+# 3. Scale marker matrix
+# ------------------------------------------------------------
+
+geno_scaled <- scale(
+  geno_pca,
+  center = TRUE,
+  scale = TRUE
+)
+
+# Remove any problematic columns after scaling
+col_ok <- apply(geno_scaled, 2, function(x) all(is.finite(x)))
+geno_scaled <- geno_scaled[, col_ok, drop = FALSE]
+
+cat("\nFinal matrix dimension used in PCA:\n")
+print(dim(geno_scaled))
+
+# ------------------------------------------------------------
+# 4. Principal component analysis
+# ------------------------------------------------------------
+
+pca_geno <- prcomp(
+  geno_scaled,
+  center = FALSE,
+  scale. = FALSE
+)
+
+var_exp <- summary(pca_geno)$importance[2, 1:5] * 100
+
+cat("\nVariance explained by the first five PCs (%):\n")
+print(round(var_exp, 2))
+
+pca_df <- data.frame(
+  Line = rownames(geno),
+  PC1 = pca_geno$x[, 1],
+  PC2 = pca_geno$x[, 2],
+  stringsAsFactors = FALSE
+)
+
+# ------------------------------------------------------------
+# 5. Genetic group classification using k-means
+# ------------------------------------------------------------
+
+km <- kmeans(
+  pca_df[, c("PC1", "PC2")],
+  centers = 2,
+  nstart = 50
+)
+
+pca_df$Group <- paste0("Group_", km$cluster)
+
+# Rename groups as A and B
+pca_df$Group <- dplyr::recode(
+  pca_df$Group,
+  "Group_1" = "A",
+  "Group_2" = "B"
+)
+
+grupos_linhagens <- pca_df[, c("Line", "Group")]
+
+
+cat("\nScript completed successfully.\n")
+cat("Files saved in 'outputs/' and 'figures/'.\n")
