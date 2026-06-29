@@ -1,0 +1,133 @@
+# ============================================================
+# SCRIPT 03
+# Escolher 3 testadores do Grupo A
+# Selecionar top 50 cruzamentos B x B por cenário
+# Saídas:
+# - testadores_grupo_A.rds/csv
+# - cruzamentos_programa_B_top50_por_cenario.rds/csv
+# - PCA_testadores_grupo_A.png
+# ============================================================
+library(dplyr)
+
+
+# ------------------------------------------------------------
+# 1. Carregar entradas
+# ------------------------------------------------------------
+sim_inputs_real <- readRDS("sim_inputs_real.rds")
+geno <- sim_inputs_real$geno
+geno <- as.matrix(geno)
+
+grupos_linhagens <- readRDS("grupos_linhagens_A_B.rds")
+pca_df <- readRDS("pca_grupos_linhagens_A_B.rds")
+cruzamentos_programa_B <- readRDS("cruzamentos_programa_B_BxB.rds")
+
+# ------------------------------------------------------------
+# 2. Conferências iniciais
+# ------------------------------------------------------------
+
+cat("\nNúmero de linhagens por grupo:\n")
+print(table(grupos_linhagens$Grupo))
+
+cat("\nNúmero de cruzamentos B x B por cenário disponíveis:\n")
+print(table(cruzamentos_programa_B$scenario))
+
+# ------------------------------------------------------------
+# 3. Separar Grupo A no espaço da PCA
+# ------------------------------------------------------------
+
+grupo_A_pca <- pca_df %>%
+  dplyr::filter(Grupo == "A")
+
+cat("\nNúmero de linhagens no Grupo A:\n")
+print(nrow(grupo_A_pca))
+
+if (nrow(grupo_A_pca) < 3) {
+  stop("O Grupo A possui menos de 3 linhagens. Não é possível escolher 3 testadores.")
+}
+
+# ------------------------------------------------------------
+# 4. Calcular distância ao centro do Grupo A
+# ------------------------------------------------------------
+
+centro_PC1 <- mean(grupo_A_pca$PC1)
+centro_PC2 <- mean(grupo_A_pca$PC2)
+
+grupo_A_pca <- grupo_A_pca %>%
+  dplyr::mutate(
+    dist_centro = sqrt(
+      (PC1 - centro_PC1)^2 +
+        (PC2 - centro_PC2)^2
+    )
+  )
+
+# ------------------------------------------------------------
+# 5. Escolher 3 testadores
+# ------------------------------------------------------------
+# Critério:
+# - 1 linhagem central no Grupo A
+# - 1 linhagem extrema inferior em PC2
+# - 1 linhagem extrema superior em PC2
+
+tester_central <- grupo_A_pca %>%
+  dplyr::arrange(dist_centro) %>%
+  dplyr::slice(1)
+
+tester_extremo_baixo <- grupo_A_pca %>%
+  dplyr::arrange(PC2) %>%
+  dplyr::slice(1)
+
+tester_extremo_alto <- grupo_A_pca %>%
+  dplyr::arrange(dplyr::desc(PC2)) %>%
+  dplyr::slice(1)
+
+testadores_A <- dplyr::bind_rows(
+  tester_central,
+  tester_extremo_baixo,
+  tester_extremo_alto
+) %>%
+  dplyr::distinct(Linhagem, .keep_all = TRUE)
+
+# Caso algum testador se repita, completar com linhagens mais distantes do centro
+if (nrow(testadores_A) < 3) {
+  
+  extras <- grupo_A_pca %>%
+    dplyr::filter(!(Linhagem %in% testadores_A$Linhagem)) %>%
+    dplyr::arrange(dplyr::desc(dist_centro)) %>%
+    dplyr::slice_head(n = 3 - nrow(testadores_A))
+  
+  testadores_A <- dplyr::bind_rows(testadores_A, extras)
+}
+
+testadores_A$Tipo_testador <- c(
+  "Central",
+  "Extremo_PC2_baixo",
+  "Extremo_PC2_alto"
+)
+
+testadores_A <- testadores_A %>%
+  dplyr::select(
+    Tipo_testador,
+    Linhagem,
+    Grupo,
+    PC1,
+    PC2,
+    dist_centro
+  )
+
+cat("\nTestadores escolhidos no Grupo A:\n")
+print(testadores_A)
+
+# ------------------------------------------------------------
+# 6. Selecionar top 50 cruzamentos B x B por cenário
+# ------------------------------------------------------------
+
+n_crosses_scenario <- 50
+
+cruzamentos_B_top50 <- cruzamentos_programa_B %>%
+  dplyr::group_by(scenario) %>%
+  dplyr::arrange(dplyr::desc(Y), .by_group = TRUE) %>%
+  dplyr::slice_head(n = n_crosses_scenario) %>%
+  dplyr::ungroup()
+
+cat("\nNúmero de cruzamentos B x B selecionados por cenário:\n")
+print(table(cruzamentos_B_top50$scenario))
