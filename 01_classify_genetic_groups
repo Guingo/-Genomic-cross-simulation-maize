@@ -1,28 +1,39 @@
 # ============================================================
-# 01_classify_genetic_groups.R
-# Classify maize inbred lines into two genetic groups
+# Classificar linhagens em dois grupos genéticos usando PCA + k-means
+# Entrada:
+# - sim_inputs_real.rds
+# Saídas:
+# - grupos_linhagens_A_B.rds
+# - pca_grupos_linhagens_A_B.rds
+# - PCA_grupos_geneticos_A_B.png
 # ============================================================
-library(dplyr)
+
 library(ggplot2)
 set.seed(123)
-# ------------------------------------------------------------
-# 1. Create output folders
-# ------------------------------------------------------------
-
-dir.create("outputs", showWarnings = FALSE)
-dir.create("figures", showWarnings = FALSE)
 
 # ------------------------------------------------------------
-# 2. Remove markers with zero variance
+# 1. Carregar entradas
 # ------------------------------------------------------------
+
+sim_inputs_real <- readRDS("sim_inputs_real.rds")
+
+geno <- sim_inputs_real$geno
+geno <- as.matrix(geno)
+
+# ------------------------------------------------------------
+# 2. Remover marcadores sem variância
+# ------------------------------------------------------------
+
 var_snp <- apply(geno, 2, var, na.rm = TRUE)
+
 snps_validos <- names(var_snp)[
   !is.na(var_snp) & var_snp > 0
 ]
+
 geno_pca <- geno[, snps_validos, drop = FALSE]
 
 # ------------------------------------------------------------
-# 3. Scale marker matrix
+# 3. Padronizar matriz de marcadores
 # ------------------------------------------------------------
 
 geno_scaled <- scale(
@@ -31,15 +42,14 @@ geno_scaled <- scale(
   scale = TRUE
 )
 
-# Remove any problematic columns after scaling
 col_ok <- apply(geno_scaled, 2, function(x) all(is.finite(x)))
 geno_scaled <- geno_scaled[, col_ok, drop = FALSE]
 
-cat("\nFinal matrix dimension used in PCA:\n")
+cat("\nDimensão final usada na PCA:\n")
 print(dim(geno_scaled))
 
 # ------------------------------------------------------------
-# 4. Principal component analysis
+# 4. PCA
 # ------------------------------------------------------------
 
 pca_geno <- prcomp(
@@ -50,18 +60,18 @@ pca_geno <- prcomp(
 
 var_exp <- summary(pca_geno)$importance[2, 1:5] * 100
 
-cat("\nVariance explained by the first five PCs (%):\n")
+cat("\nVariância explicada pelos cinco primeiros PCs (%):\n")
 print(round(var_exp, 2))
 
 pca_df <- data.frame(
-  Line = rownames(geno),
+  Linhagem = rownames(geno),
   PC1 = pca_geno$x[, 1],
   PC2 = pca_geno$x[, 2],
   stringsAsFactors = FALSE
 )
 
 # ------------------------------------------------------------
-# 5. Genetic group classification using k-means
+# 5. Classificação em dois grupos genéticos
 # ------------------------------------------------------------
 
 km <- kmeans(
@@ -70,17 +80,33 @@ km <- kmeans(
   nstart = 50
 )
 
-pca_df$Group <- paste0("Group_", km$cluster)
+pca_df$Grupo <- paste0("Grupo_", km$cluster)
 
-# Rename groups as A and B
-pca_df$Group <- dplyr::recode(
-  pca_df$Group,
-  "Group_1" = "A",
-  "Group_2" = "B"
+pca_df$Grupo <- dplyr::recode(
+  pca_df$Grupo,
+  "Grupo_1" = "A",
+  "Grupo_2" = "B"
 )
 
-grupos_linhagens <- pca_df[, c("Line", "Group")]
+grupos_linhagens <- pca_df[, c("Linhagem", "Grupo")]
 
+cat("\nNúmero de linhagens por grupo:\n")
+print(table(grupos_linhagens$Grupo))
 
-cat("\nScript completed successfully.\n")
-cat("Files saved in 'outputs/' and 'figures/'.\n")
+# ------------------------------------------------------------
+# 6. Gráfico da PCA
+# ------------------------------------------------------------
+
+plot_grupos <- ggplot(
+  pca_df,
+  aes(x = PC1, y = PC2, color = Grupo)
+) +
+  geom_point(size = 3, alpha = 0.85) +
+  theme_classic(base_size = 14) +
+  labs(
+    x = paste0("PC1 (", round(var_exp[1], 2), "%)"),
+    y = paste0("PC2 (", round(var_exp[2], 2), "%)"),
+    color = "Grupo"
+  )
+
+print(plot_grupos)
