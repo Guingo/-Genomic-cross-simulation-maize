@@ -1,24 +1,14 @@
 # ============================================================
 # SCRIPT 00
 # Organizar entradas reais para a simulação
-#
 # Saída:
 # - sim_inputs_real.rds
 # ============================================================
 
-
-library(dplyr)
-
+# 1.Carregar arquivos
 # ------------------------------------------------------------
-# 1. Caminhos dos arquivos
-# ------------------------------------------------------------
-
 path_geno <- "C:/DadosR/Dados Milho Tropical/Dados_Milho/Matriz_dos_Marcadores_350.rds"
 path_mapa <- "C:/DadosR/Dados Milho Tropical/Dados_Milho/baybnew/map_painel360.txt"
-
-# ------------------------------------------------------------
-# 2. Carregar arquivos
-# ------------------------------------------------------------
 
 geno <- readRDS(path_geno)
 
@@ -36,32 +26,7 @@ plan_FF_raw <- readRDS("maxGainPlan_FF.rds")
 plan_FM_raw <- readRDS("maxGainPlan_FM.rds")
 plan_MT_raw <- readRDS("maxGainPlan_MT.rds")
 plan_Culling_raw <- readRDS("Culling_MT.rds")
-
-# ------------------------------------------------------------
-# 3. Conferências iniciais
-# ------------------------------------------------------------
-
-cat("\nDimensão da matriz genotípica:\n")
-print(dim(geno))
-
-cat("\nDimensão do mapa:\n")
-print(dim(mapa))
-
-cat("\nDimensão da tabela de efeitos:\n")
-print(dim(efeitos_combinados))
-
-cat("\nMarcadores duplicados no mapa:\n")
-print(sum(duplicated(mapa$marker)))
-
-cat("\nMarcadores duplicados na matriz genotípica:\n")
-print(sum(duplicated(colnames(geno))))
-
-cat("\nPrimeiros parentais:\n")
-print(head(rownames(geno)))
-
-if (is.null(rownames(geno))) {
-  stop("A matriz genotípica precisa ter os nomes das linhagens nos rownames.")
-}
+-
 
 # ------------------------------------------------------------
 # 4. Ajustar tipos do mapa
