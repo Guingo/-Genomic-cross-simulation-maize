@@ -27,16 +27,14 @@ plan_FM_raw <- readRDS("maxGainPlan_FM.rds")
 plan_MT_raw <- readRDS("maxGainPlan_MT.rds")
 plan_Culling_raw <- readRDS("Culling_MT.rds")
 -
-
 # ------------------------------------------------------------
-# 4. Ajustar tipos do mapa
+# 2. Ajustar tipos do mapa
 # ------------------------------------------------------------
-
 mapa$chr <- as.integer(mapa$chr)
 mapa$pos <- as.numeric(mapa$pos)
 
 # ------------------------------------------------------------
-# 5. Identificar SNPs comuns
+# 3. Identificar SNPs comuns
 # ------------------------------------------------------------
 
 snps_comuns <- Reduce(
@@ -49,7 +47,7 @@ snps_comuns <- Reduce(
 )
 
 # -----------------------------------------------------------------------------
-# 6. Ordenar mapa e alinhar genótipos
+# 4. Ordenar mapa e alinhar genótipos
 # ------------------------------------------------------------------------------
 
 mapa2 <- mapa %>%
@@ -63,7 +61,7 @@ cat("\nAlinhamento geno x mapa:\n")
 print(all(colnames(geno2) == mapa2$marker))
 
 # ------------------------------------------------------------
-# 7. Criar posição genética aproximada
+# 5. Criar posição genética aproximada
 # ------------------------------------------------------------
 # 
 mapa2 <- mapa %>%
@@ -72,16 +70,11 @@ mapa2 <- mapa %>%
 
 geno2 <- geno[, mapa2$marker]
 geno2 <- as.matrix(geno2)
-
-cat("\nAlinhamento geno x mapa:\n")
-print(all(colnames(geno2) == mapa2$marker))
-
 # ------------------------------------------------------------------------
-# 7. Criar posição genética aproximada Como não há mapa genético em cM
+# 6. Criar posição genética aproximada Como não há mapa genético em cM
 # ------------------------------------------------------------
 
 chr_length_M <- 2.0 # Cada cromossomo foi assumido com 2 Morgans
-
 mapa2$gen_pos_M <- NA_real_
 
 for (chr_i in unique(mapa2$chr)) {
@@ -115,17 +108,14 @@ print(
 )
 
 # ------------------------------------------------------------
-# 8. Alinhar efeitos ao mapa
+# 7. Alinhar efeitos ao mapa
 # ------------------------------------------------------------
 efeitos2 <- efeitos_combinados %>%
   dplyr::filter(Marcador %in% mapa2$marker) %>%
   dplyr::slice(match(mapa2$marker, Marcador))
 
-cat("\nAlinhamento efeitos x mapa:\n")
-print(all(efeitos2$Marcador == mapa2$marker))
-
 # ------------------------------------------------------------
-# 9. Remover heterozigotos e imputar
+# 8. Remover heterozigotos e imputar
 # ------------------------------------------------------------
 
 genov2 <- geno2
@@ -152,11 +142,8 @@ for (j in seq_len(ncol(genov2))) {
   }
 }
 
-cat("\nGenótipos após imputação:\n")
-print(table(genov2, useNA = "ifany"))
-
 # ------------------------------------------------------------
-# 10. Criar matriz de efeitos
+# 9. Criar matriz de efeitos
 # ------------------------------------------------------------
 
 MarkEff_mat <- efeitos2 %>%
@@ -166,14 +153,8 @@ MarkEff_mat <- efeitos2 %>%
 rownames(MarkEff_mat) <- efeitos2$Marcador
 colnames(MarkEff_mat) <- c("AP", "AE", "FF", "FM")
 
-cat("\nDimensão da matriz de efeitos:\n")
-print(dim(MarkEff_mat))
-
-cat("\nAlinhamento geno x efeitos:\n")
-print(all(colnames(genov2) == rownames(MarkEff_mat)))
-
 # ------------------------------------------------------------
-# 11. extrair planos 
+# 10. extrair planos 
 # ------------------------------------------------------------
 
 extract_plan <- function(plan_raw, scenario_name) {
@@ -232,10 +213,8 @@ print(
     )
 )
 
-
-
 # ------------------------------------------------------------
-# 12. Organizar planos por cenário
+# 11. Organizar planos por cenário
 # ------------------------------------------------------------
 
 plan_AP <- extract_plan(plan_AP_raw, "AP")
@@ -254,12 +233,8 @@ plans_all <- dplyr::bind_rows(
   plan_Culling
 )
 
-cat("\nNúmero de cruzamentos por cenário:\n")
-print(table(plans_all$scenario))
-
-
 # ------------------------------------------------------------
-# 13. Criar objeto final
+# 12. Criar objeto final
 # ------------------------------------------------------------
 
 sim_inputs_real <- list(
@@ -285,6 +260,3 @@ sim_inputs_real <- list(
 )
 
 saveRDS(sim_inputs_real, "sim_inputs_real.rds")
-
-cat("\nObjeto salvo: sim_inputs_real.rds\n")
-cat("SCRIPT 00 concluído com sucesso!\n")
